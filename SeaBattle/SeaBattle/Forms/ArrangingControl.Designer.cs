@@ -27,9 +27,9 @@ namespace SeaBattle.Forms
         {
             this.tableLayoutPanel = new System.Windows.Forms.TableLayoutPanel();
             this.headerPanel = new System.Windows.Forms.Panel();
+            this.headerLabel = new System.Windows.Forms.Label();
             this.footerPanel = new System.Windows.Forms.Panel();
             this.endArrangingButton = new System.Windows.Forms.Button();
-            this.headerLabel = new System.Windows.Forms.Label();
             this.fieldControl = new SeaBattle.Forms.FieldControl();
             this.tableLayoutPanel.SuspendLayout();
             this.headerPanel.SuspendLayout();
@@ -64,6 +64,19 @@ namespace SeaBattle.Forms
             this.headerPanel.Size = new System.Drawing.Size(394, 94);
             this.headerPanel.TabIndex = 0;
             // 
+            // headerLabel
+            // 
+            this.headerLabel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.headerLabel.AutoSize = true;
+            this.headerLabel.Location = new System.Drawing.Point(97, 41);
+            this.headerLabel.Name = "headerLabel";
+            this.headerLabel.Size = new System.Drawing.Size(200, 13);
+            this.headerLabel.TabIndex = 0;
+            this.headerLabel.Text = "Розмісти кораблі кліком по клітинкам";
+            this.headerLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.headerLabel.Click += new System.EventHandler(this.headerLabel_Click);
+            // 
             // footerPanel
             // 
             this.footerPanel.Controls.Add(this.endArrangingButton);
@@ -75,7 +88,7 @@ namespace SeaBattle.Forms
             // 
             // endArrangingButton
             // 
-            this.endArrangingButton.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            this.endArrangingButton.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.endArrangingButton.Location = new System.Drawing.Point(125, 3);
             this.endArrangingButton.Name = "endArrangingButton";
@@ -84,24 +97,12 @@ namespace SeaBattle.Forms
             this.endArrangingButton.Text = "Продовжити";
             this.endArrangingButton.UseVisualStyleBackColor = true;
             // 
-            // headerLabel
-            // 
-            this.headerLabel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.headerLabel.AutoSize = true;
-            this.headerLabel.Location = new System.Drawing.Point(97, 41);
-            this.headerLabel.Name = "headerLabel";
-            this.headerLabel.Size = new System.Drawing.Size(215, 13);
-            this.headerLabel.TabIndex = 0;
-            this.headerLabel.Text = "Розмісти кораблі кліком по клітинкам";
-            this.headerLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // arrangingFieldControl
+            // fieldControl
             // 
             this.fieldControl.BackColor = System.Drawing.SystemColors.ControlDark;
             this.fieldControl.Dock = System.Windows.Forms.DockStyle.Fill;
             this.fieldControl.Location = new System.Drawing.Point(203, 103);
-            this.fieldControl.Name = "arrangingFieldControl";
+            this.fieldControl.Name = "fieldControl";
             this.fieldControl.Size = new System.Drawing.Size(394, 394);
             this.fieldControl.TabIndex = 2;
             // 

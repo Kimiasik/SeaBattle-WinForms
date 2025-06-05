@@ -1,17 +1,16 @@
 ﻿using System;
 using System.Drawing;
 using System.Linq;
-using System.Xml.Linq;
 
 namespace SeaBattle.Script
-{   
+{
     public class Game
     {
         private GameStage stage = GameStage.NotStarted;
-        private Player firstPlayer = null;
-        private Player secondPlayer = null;
-        private bool isFirstPlayerCurrent = false;
-        private GameOptions options = new GameOptions();
+        private Player firstPlayer;
+        private Player secondPlayer;
+        private bool isFirstPlayerCurrent;
+        private readonly GameOptions options = new GameOptions();
 
         public Game(Action<GameOptions> configureOptions = null)
         {
@@ -30,15 +29,15 @@ namespace SeaBattle.Script
 
         public void Start(string firstPlayerName, string secondPlayerName)
         {
-            firstPlayer = CreatePlayer(firstPlayerName);
-            secondPlayer = CreatePlayer(secondPlayerName);
+            firstPlayer = InitializePlayer(firstPlayerName);
+            secondPlayer = InitializePlayer(secondPlayerName);
             isFirstPlayerCurrent = true;
             CurrentPlayerChanged?.Invoke(CurrentPlayer);
-            ChangeStage(GameStage.ArrangingShips);
+            SetStage(GameStage.ArrangingShips);
         }
 
         public bool CanEndArrangingCurrentPlayerShips =>
-            Stage == GameStage.ArrangingShips && IsReadyForBattle(CurrentPlayer);
+            stage == GameStage.ArrangingShips && PlayerReadyForBattle(CurrentPlayer);
 
         public void EndArrangingCurrentPlayerShips()
         {
@@ -47,76 +46,81 @@ namespace SeaBattle.Script
 
             if (!CanBeginBattle)
             {
-                MoveToNextPlayer();
+                SwitchPlayer();
                 return;
             }
 
-            MoveToNextPlayer();
-            ChangeStage(GameStage.Battle);
+            SwitchPlayer();
+            SetStage(GameStage.Battle);
         }
 
         public bool CanBeginBattle =>
-            Stage == GameStage.ArrangingShips
-            && IsReadyForBattle(FirstPlayer) && IsReadyForBattle(SecondPlayer);
+            stage == GameStage.ArrangingShips
+            && PlayerReadyForBattle(firstPlayer) && PlayerReadyForBattle(secondPlayer);
 
         public void ShootTo(Point point)
         {
-            if (Stage != GameStage.Battle)
-                throw new InvalidOperationException();
+            if (stage != GameStage.Battle)
+                throw new InvalidOperationException("Game is not in Battle stage.");
 
-            var shotResult = GetNextPlayer().Field.ShootTo(point);
-            switch (shotResult)
+            var targetPlayer = GetOpponentPlayer();
+            var result = targetPlayer.Field.ShootTo(point);
+
+            switch (result)
             {
                 case ShotResult.Hit:
-                    if (IsCurrentPlayerWin())
-                        ChangeStage(GameStage.Finished);
+                    if (CheckWinCondition())
+                        SetStage(GameStage.Finished);
                     else
                         ReadyToShoot?.Invoke();
-                    return;
+                    break;
+
                 case ShotResult.Miss:
-                    MoveToNextPlayer();
+                    SwitchPlayer();
                     ReadyToShoot?.Invoke();
-                    return;
+                    break;
+
                 case ShotResult.Cancel:
-                    return;
+                    // Повторний постріл в ту ж точку — нічого не робимо
+                    break;
+
                 default:
-                    throw new InvalidOperationException();
+                    throw new InvalidOperationException("Unexpected shot result.");
             }
         }
 
-        private Player CreatePlayer(string name)
+        private Player InitializePlayer(string name)
         {
             var field = options.CreateField();
             foreach (var ship in options.CreateFleet())
                 field.AddShip(ship);
+
             return new Player(name, field);
         }
 
-        private void ChangeStage(GameStage stage)
+        private void SetStage(GameStage newStage)
         {
-            this.stage = stage;
-            StageChanged?.Invoke(stage);
+            stage = newStage;
+            StageChanged?.Invoke(newStage);
         }
 
-        private Player GetNextPlayer() => isFirstPlayerCurrent ? secondPlayer : firstPlayer;
+        private Player GetOpponentPlayer() => isFirstPlayerCurrent ? secondPlayer : firstPlayer;
 
-        private void MoveToNextPlayer()
+        private void SwitchPlayer()
         {
             isFirstPlayerCurrent = !isFirstPlayerCurrent;
             CurrentPlayerChanged?.Invoke(CurrentPlayer);
         }
 
-        private static bool IsReadyForBattle(IPlayer player)
+        private static bool PlayerReadyForBattle(IPlayer player)
         {
             return player.Field.GetShipToPutOrNull() == null && !player.Field.GetConflictingPoints().Any();
         }
 
-        private bool IsCurrentPlayerWin()
+        private bool CheckWinCondition()
         {
-            var nextPlayer = GetNextPlayer();
-            return nextPlayer != null
-                ? !nextPlayer.Field.HasAliveShips()
-                : false;
+            var opponent = GetOpponentPlayer();
+            return opponent != null && !opponent.Field.HasAliveShips();
         }
     }
 }

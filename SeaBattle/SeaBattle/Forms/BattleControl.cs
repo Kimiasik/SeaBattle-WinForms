@@ -15,6 +15,7 @@ namespace SeaBattle.Forms
             InitializeComponent();
         }
 
+        // Налаштування контролу з грою
         public void Configure(Game game)
         {
             if (this.game != null)
@@ -22,30 +23,35 @@ namespace SeaBattle.Forms
 
             this.game = game;
 
+            // Налаштовуємо поля гравця і бота
             humanFieldControl.Configure(game.FirstPlayer.Field, false);
             aiFieldControl.Configure(game.SecondPlayer.Field, true);
 
-            aiFieldControl.ClickOnPoint += HumanFieldControl_ClickOnPoint;
+            // Підписка на клік по полю AI для пострілу людини
+            aiFieldControl.ClickOnPoint += AiFieldControl_ClickOnPoint;
 
+            // Підписка на подію готовності робити постріл (для AI)
             game.ReadyToShoot += Game_ReadyToShoot;
         }
 
-        private void HumanFieldControl_ClickOnPoint(Point point, MouseEventArgs args)
+        // Обробка кліку людини по полю AI
+        private void AiFieldControl_ClickOnPoint(Point point, MouseEventArgs args)
         {
-            if (args.Button == MouseButtons.Left)
+            if (args.Button == MouseButtons.Left && game.CurrentPlayer.Equals(game.FirstPlayer))
             {
-                if (game.CurrentPlayer.Equals(game.FirstPlayer))
-                    game.ShootTo(point);
+                game.ShootTo(point);
             }
         }
 
+        // Подія, коли AI готовий зробити постріл
         private void Game_ReadyToShoot()
         {
-            var humanPlayer = game.FirstPlayer;
-            var aiPlayer = game.SecondPlayer;
-            if (game.Stage == GameStage.Battle && game.CurrentPlayer.Equals(aiPlayer))
+            if (game.Stage != GameStage.Battle)
+                return;
+
+            if (game.CurrentPlayer.Equals(game.SecondPlayer))
             {
-                var shot = humanPlayer.Field.GenerateRandomShot();
+                var shot = game.FirstPlayer.Field.GenerateRandomShot();
                 game.ShootTo(shot);
             }
         }

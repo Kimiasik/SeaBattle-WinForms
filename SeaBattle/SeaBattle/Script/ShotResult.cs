@@ -1,9 +1,10 @@
 ﻿namespace SeaBattle.Script
 {
+    // Результати пострілу
     public enum ShotResult
     {
-        Cancel = 0,
-        Miss = -1,
-        Hit = 1
+        Miss = -1,    // Промах
+        Cancel = 0,   // Скасування (вже стріляли в цю точку)
+        Hit = 1       // Влучання
     }
 }

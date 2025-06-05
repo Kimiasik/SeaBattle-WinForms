@@ -7,29 +7,27 @@ namespace SeaBattle.Forms
     {
         private Game game;
 
+        // Конструктор
         public FinishedControl()
         {
             InitializeComponent();
         }
 
+        // Ініціалізація контролу грою
         public void Configure(Game game)
         {
-            if (this.game != null)
-                return;
+            // Якщо вже налаштовано, виходимо
+            if (this.game != null) return;
 
             this.game = game;
 
-            humanFieldControl.Configure(game.FirstPlayer.Field, false);
-            aiFieldControl.Configure(game.SecondPlayer.Field, false);
+            // Відображаємо поля без приховування
+            humanFieldControl.Configure(game.FirstPlayer.Field, fogOfWar: false);
+            aiFieldControl.Configure(game.SecondPlayer.Field, fogOfWar: false);
 
-            if (game.FirstPlayer.Field.HasAliveShips())
-            {
-                winnerLabel.Text = "Переміг гравець";
-            }
-            else
-            {
-                winnerLabel.Text = "Переміг бот";
-            }
+            // Визначаємо переможця та відображаємо текст
+            var playerHasAliveShips = game.FirstPlayer.Field.HasAliveShips();
+            winnerLabel.Text = playerHasAliveShips ? "Переміг гравець" : "Переміг бот";
         }
     }
 }

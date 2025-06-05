@@ -5,11 +5,16 @@ namespace SeaBattle.Script
 {
     public static class Extensions
     {
-        public static IEnumerable<Point> GetRoundPoints(this Point point)
+        // Отримуємо всі точки навколо (включно з самою точкою)
+        public static IEnumerable<Point> GetRoundPoints(this Point origin)
         {
-            for (int dx = -1; dx <= 1; dx++)
-                for (int dy = -1; dy <= 1; dy++)
-                    yield return new Point(point.X + dx, point.Y + dy);
+            for (int offsetX = -1; offsetX <= 1; offsetX++)
+            {
+                for (int offsetY = -1; offsetY <= 1; offsetY++)
+                {
+                    yield return new Point(origin.X + offsetX, origin.Y + offsetY);
+                }
+            }
         }
     }
 }

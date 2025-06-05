@@ -11,16 +11,17 @@ namespace SeaBattle.Script
         private readonly HashSet<Ship> ships = new HashSet<Ship>();
         private readonly HashSet<Point> shots = new HashSet<Point>();
 
+
+        public int Width { get; }
+        public int Height { get; }
+
+        public event Action Updated;
+
         public Field(int width, int height)
         {
             Width = width;
             Height = height;
         }
-
-        public event Action Updated;
-
-        public int Width { get; }
-        public int Height { get; }
 
         public void AddShip(Ship ship)
         {
@@ -35,110 +36,122 @@ namespace SeaBattle.Script
 
         public IShip GetShipToPutOrNull()
         {
+            // Беремо найбільший корабель, який ще не розміщений
             return ships
-                .Where(ship => !ship.Position.HasValue)
-                .OrderByDescending(ship => ship.Size)
+                .Where(s => !s.Position.HasValue)
+                .OrderByDescending(s => s.Size)
                 .FirstOrDefault();
         }
 
         public bool PutShip(IShip ship, Point point)
         {
             if (!ships.Contains(ship))
-                throw new InvalidOperationException();
-            var actualShip = ship as Ship;
+                throw new InvalidOperationException("Ship is not part of this field.");
 
-            var dx = 1;
-            var dy = 1;
-            if (ship.Direction == Direction.Horizontal)
-                dx = actualShip.Size;
-            else
-                dy = actualShip.Size;
+            var actualShip = (Ship)ship;
 
-            if (0 <= point.X && point.X + dx <= Width
-                && 0 <= point.Y && point.Y + dy <= Height)
+            int dx = actualShip.Direction == Direction.Horizontal ? actualShip.Size : 1;
+            int dy = actualShip.Direction == Direction.Vertical ? actualShip.Size : 1;
+
+            bool isInsideBounds = point.X >= 0 && point.Y >= 0 &&
+                                  point.X + dx <= Width && point.Y + dy <= Height;
+
+            if (isInsideBounds)
             {
                 actualShip.Position = point;
                 Updated?.Invoke();
                 return true;
             }
-            actualShip.Position = null;
-            Updated?.Invoke();
-            return false;
+            else
+            {
+                actualShip.Position = null;
+                Updated?.Invoke();
+                return false;
+            }
         }
 
         public IReadOnlyList<IShip> GetShipsAt(Point point)
         {
-            var result = ships
+            return ships
                 .Where(ship => ship.GetPositionPoints().Contains(point))
                 .OrderBy(ship => ship.Size)
                 .ToList();
-            return result;
         }
 
         public bool ChangeShipDirection(IShip ship)
         {
             if (!ships.Contains(ship))
-                throw new InvalidOperationException();
-            var actualShip = ship as Ship;
+                throw new InvalidOperationException("Ship is not part of this field.");
+
+            var actualShip = (Ship)ship;
 
             if (!actualShip.Position.HasValue)
                 return false;
 
-            var position = actualShip.Position.Value;
+            var pos = actualShip.Position.Value;
+
             if (actualShip.Direction == Direction.Horizontal)
             {
-                var overflow = position.Y + ship.Size - Height;
+                int overflow = pos.Y + actualShip.Size - Height;
                 if (overflow > 0)
                 {
-                    var newPosition = new Point(position.X, position.Y - overflow);
-                    if (newPosition.Y < 0)
+                    var adjustedPos = new Point(pos.X, pos.Y - overflow);
+                    if (adjustedPos.Y < 0)
                     {
                         actualShip.Position = null;
                         Updated?.Invoke();
                         return false;
                     }
-
-                    actualShip.Position = newPosition;
+                    actualShip.Position = adjustedPos;
                 }
                 actualShip.Direction = Direction.Vertical;
             }
             else
             {
-                var overflow = position.X + ship.Size - Width;
+                int overflow = pos.X + actualShip.Size - Width;
                 if (overflow > 0)
                 {
-                    var newPosition = new Point(position.X - overflow, position.Y);
-                    if (newPosition.X < 0)
+                    var adjustedPos = new Point(pos.X - overflow, pos.Y);
+                    if (adjustedPos.X < 0)
                     {
                         actualShip.Position = null;
                         Updated?.Invoke();
                         return false;
                     }
-
-                    actualShip.Position = newPosition;
+                    actualShip.Position = adjustedPos;
                 }
                 actualShip.Direction = Direction.Horizontal;
             }
+
             Updated?.Invoke();
             return true;
         }
+
         public ISet<Point> GetConflictingPoints()
         {
-            var shipToRoundMap = ships.ToDictionary(ship => ship, GetShipRoundPoints);
+            // Створюємо словник корабель -> всі точки навколо нього
+            var shipSurroundings = ships.ToDictionary(
+                ship => ship,
+                ship => GetShipRoundPoints(ship)
+            );
 
-            var result = new HashSet<Point>();
+            var conflicts = new HashSet<Point>();
+
             foreach (var ship in ships)
             {
-                var positionPoints = ship.GetPositionPoints();
-                foreach (var point in positionPoints)
+                var occupiedPoints = ship.GetPositionPoints();
+
+                foreach (var point in occupiedPoints)
                 {
-                    var isPointInOtherShipRound = shipToRoundMap
+                    bool conflictExists = shipSurroundings
                         .Any(pair => !pair.Key.Equals(ship) && pair.Value.Contains(point));
-                    if (isPointInOtherShipRound)
-                        result.Add(point);
+
+                    if (conflictExists)
+                        conflicts.Add(point);
                 }
             }
-            return result;
+
+            return conflicts;
         }
 
         public ShotResult ShootTo(Point point)
@@ -148,18 +161,21 @@ namespace SeaBattle.Script
 
             shots.Add(point);
 
-            var ship = GetShipsAt(point).FirstOrDefault();
-            if (ship == null)
+            var targetShip = GetShipsAt(point).FirstOrDefault();
+
+            if (targetShip == null)
             {
                 Updated?.Invoke();
                 return ShotResult.Miss;
             }
 
-            var willBlow = ship.GetPositionPoints()
-                .All(p => shots.Contains(p));
+            // Перевіряємо, чи всі точки корабля уражені, якщо так, корабель потоплений
+            bool isDestroyed = targetShip.GetPositionPoints().All(p => shots.Contains(p));
 
-            if (willBlow)
-                shots.UnionWith(GetShipRoundPoints(ship));
+            if (isDestroyed)
+            {
+                shots.UnionWith(GetShipRoundPoints(targetShip));
+            }
 
             Updated?.Invoke();
             return ShotResult.Hit;
@@ -167,11 +183,10 @@ namespace SeaBattle.Script
 
         private HashSet<Point> GetShipRoundPoints(IShip ship)
         {
-            var result = ship.GetPositionPoints()
+            return ship.GetPositionPoints()
                 .SelectMany(p => p.GetRoundPoints())
-                .Where(p => 0 <= p.X && p.X < Width && 0 <= p.Y && p.Y < Height)
+                .Where(p => p.X >= 0 && p.X < Width && p.Y >= 0 && p.Y < Height)
                 .ToHashSet();
-            return result;
         }
 
         public ISet<Point> GetShots()
@@ -182,14 +197,15 @@ namespace SeaBattle.Script
         public bool IsAlive(IShip ship)
         {
             if (!ships.Contains(ship))
-                throw new InvalidOperationException();
+                throw new InvalidOperationException("Ship is not part of this field.");
 
+            // Якщо хоч одна точка корабля не влучена, то корабель живий
             return ship.GetPositionPoints().Any(p => !shots.Contains(p));
         }
 
         public bool HasAliveShips()
         {
-            return ships.Any(ship => IsAlive(ship));
+            return ships.Any(IsAlive);
         }
     }
 }
